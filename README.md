@@ -1,0 +1,1 @@
+# LEGIXO-QA
