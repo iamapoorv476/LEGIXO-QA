@@ -1,0 +1,167 @@
+[
+  {
+    "id": 1,
+    "question": "What notice period does Priya Nambiar have in her employment agreement?",
+    "expected_citation_files": ["02_employment_agreement_excerpt.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": "Priya Nambiar has a notice period of 60 days written notice in her employment agreement with Bluecrest Analytics LLP. Either party may end the agreement by giving this notice.",
+    "actual_citation_files": ["02_employment_agreement_excerpt.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correct fact, correct single citation, no wasted retry loop."
+  },
+  {
+    "id": 2,
+    "question": "How long is the non-compete period after Priya Nambiar leaves Bluecrest?",
+    "expected_citation_files": ["02_employment_agreement_excerpt.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING - run via eval/run_self_test.py"
+  },
+  {
+    "id": 3,
+    "question": "What is the monthly rent and security deposit for Unit 4B at Harbor View Tower?",
+    "expected_citation_files": ["06_property_lease_clause.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 4,
+    "question": "Is subletting allowed under the Harbor Bean Roasters lease?",
+    "expected_citation_files": ["06_property_lease_clause.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 5,
+    "question": "When is the next hearing in Arvind Mehta v. Northfield Logistics, and who is being examined?",
+    "expected_citation_files": ["01_matter_memo_arvind_v_northfield.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 6,
+    "question": "What is the limitation period for contract claims under the Riverside Code?",
+    "expected_citation_files": ["01_matter_memo_arvind_v_northfield.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 7,
+    "question": "What interest rate applies to delayed payments when a contract fixes no rate?",
+    "expected_citation_files": ["04_statute_style_excerpt_fictional.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 8,
+    "question": "Above what value must a commercial suit go to mandatory mediation, and for how long?",
+    "expected_citation_files": ["04_statute_style_excerpt_fictional.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 9,
+    "question": "What percentage of open invoices did Northfield offer to settle for, and what did the client instruct as a counter?",
+    "expected_citation_files": ["05_counsel_notes_settlement.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 10,
+    "question": "How many clear days before a hearing must written arguments be filed?",
+    "expected_citation_files": ["03_hearing_notice_template.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 11,
+    "question": "What date was the Lakeview Society v. City Water Board hearing adjourned to?",
+    "expected_citation_files": ["03_hearing_notice_template.md"],
+    "category": "in-corpus, single-file",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING"
+  },
+  {
+    "id": 12,
+    "question": "Are the settlement talks between Arvind Mehta and Northfield confidential, and is there anything on the record yet?",
+    "expected_citation_files": ["05_counsel_notes_settlement.md"],
+    "category": "in-corpus, single-file, nuanced wording",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING - tests whether the system correctly surfaces the 'without prejudice unless a signed term sheet exists' nuance rather than a flat yes/no."
+  },
+  {
+    "id": 13,
+    "question": "What is the capital of France?",
+    "expected_citation_files": [],
+    "category": "out-of-corpus, unrelated",
+    "actual_answer": "I can't find information about this in the provided documents.",
+    "actual_citation_files": [],
+    "loop_count": 2,
+    "pass": true,
+    "notes": "Verified live. Correctly refused after exhausting the loop budget (2 retrieval attempts, rewritten query still found nothing above similarity threshold). No hallucination."
+  },
+  {
+    "id": 14,
+    "question": "What is the interest rate on Priya Nambiar's late salary payments?",
+    "expected_citation_files": [],
+    "category": "out-of-corpus, plausible-sounding trap",
+    "actual_answer": "I can't find information about this in the provided documents.",
+    "actual_citation_files": [],
+    "loop_count": 2,
+    "pass": true,
+    "notes": "Verified live. This is the hardest case in the set: both 'Priya Nambiar' and a '9% interest rate' genuinely exist in the corpus, but in unrelated documents. The grader's own reasoning explicitly distinguished them ('refers to commercial suits and contract defaults generally, not employment salary payments') rather than stitching the two facts together into a fabricated answer."
+  },
+  {
+    "id": 15,
+    "question": "What was the outcome of the Arvind Mehta trial?",
+    "expected_citation_files": [],
+    "category": "out-of-corpus, presupposes a fact not in the corpus",
+    "actual_answer": null,
+    "actual_citation_files": null,
+    "loop_count": null,
+    "pass": null,
+    "notes": "PENDING - the corpus only shows the matter at the evidence stage, pre-trial; a good answer should say the outcome isn't in the documents rather than assuming a trial concluded."
+  }
+]
