@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from anthropic import Anthropic
+from langsmith import traceable
 
 from src.config import settings
 from src.pinecone_client import ScoredChunk
@@ -122,6 +123,7 @@ def _extract_tool_input(response, tool_name: str) -> dict:
 # --- Public functions --------------------------------------------------------
 
 
+@traceable(run_type="llm", name="grade_relevance")
 def grade_relevance(question: str, chunks: list[ScoredChunk] | list[dict]) -> GradeResult:
     """Ask Claude whether the retrieved chunks are sufficient to answer
     `question`. This is the real decision behind the graph's branch --
@@ -159,6 +161,7 @@ def grade_relevance(question: str, chunks: list[ScoredChunk] | list[dict]) -> Gr
     )
 
 
+@traceable(run_type="llm", name="generate_answer")
 def generate_answer(question: str, chunks: list[ScoredChunk] | list[dict]) -> AnswerResult:
     """Ask Claude to answer `question` using only the given chunks, with
     forced structured citations."""
@@ -198,6 +201,7 @@ def generate_answer(question: str, chunks: list[ScoredChunk] | list[dict]) -> An
     )
 
 
+@traceable(run_type="llm", name="rewrite_query")
 def rewrite_query(original_question: str, grade_reasoning: str) -> str:
     """Reformulate the question when the first retrieval attempt came back
     insufficient. Plain text, not tool-called -- a single string doesn't

@@ -54,6 +54,17 @@ def test_health_endpoint():
     assert "…redacted" in body["config"]["anthropic_api_key"]
 
 
+def test_health_endpoint_reports_langsmith_tracing_state():
+    response = client.get("/health")
+    body = response.json()["config"]
+    assert "langsmith_tracing" in body
+    assert "langsmith_project" in body
+    # off by default in this test environment (no LANGSMITH_TRACING set) --
+    # api key must not be echoed when tracing is disabled
+    if not body["langsmith_tracing"]:
+        assert body["langsmith_api_key"] == "(tracing disabled)"
+
+
 def test_ask_happy_path_includes_trace_by_default():
     with patch("src.api.run_qa", return_value=_fake_graph_result()) as mock_run:
         response = client.post("/ask", json={"question": "What is the notice period?"})

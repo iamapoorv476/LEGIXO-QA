@@ -27,6 +27,7 @@ import logging
 from typing import Literal, TypedDict
 
 from langgraph.graph import END, StateGraph
+from langsmith import traceable
 
 from src.config import settings
 from src.embeddings import embed_query
@@ -61,6 +62,7 @@ class QAState(TypedDict):
 # --- Nodes --------------------------------------------------------------------
 
 
+@traceable(run_type="retriever", name="retrieve")
 def retrieve_node(state: QAState, pinecone_client: PineconeClient | None = None) -> dict:
     """Embed the current query, search Pinecone, keep chunks above the
     similarity floor. Increments loop_count -- this is what the loop
@@ -89,6 +91,7 @@ def retrieve_node(state: QAState, pinecone_client: PineconeClient | None = None)
     return {"retrieved_chunks": chunks, "loop_count": new_loop_count, "trace": trace}
 
 
+@traceable(run_type="chain", name="grade_chunks")
 def grade_chunks_node(state: QAState) -> dict:
     """Real branch condition: an LLM judges whether retrieved chunks are
     sufficient. No hardcoded True/False."""
@@ -108,12 +111,14 @@ def grade_chunks_node(state: QAState) -> dict:
     }
 
 
+@traceable(run_type="chain", name="rewrite_query_node")
 def rewrite_query_node(state: QAState) -> dict:
     new_query = rewrite_query(state["original_question"], state["grade_reasoning"])
     trace = state["trace"] + [f"rewrite_query: {state['question']!r} -> {new_query!r}"]
     return {"question": new_query, "trace": trace}
 
 
+@traceable(run_type="chain", name="generate_answer_node")
 def generate_answer_node(state: QAState) -> dict:
     result = generate_answer(state["original_question"], state["retrieved_chunks"])
     trace = state["trace"] + [
@@ -122,6 +127,7 @@ def generate_answer_node(state: QAState) -> dict:
     return {"answer": result.answer, "citations": result.cited_chunk_ids, "trace": trace}
 
 
+@traceable(run_type="chain", name="validate_citations")
 def validate_citations_node(state: QAState) -> dict:
     """Programmatic guarantee against fake citations: every cited chunk_id
     must exist in what was actually retrieved, or it's dropped."""
@@ -139,6 +145,7 @@ def validate_citations_node(state: QAState) -> dict:
     return {"citations": validated, "trace": state["trace"] + [trace_line]}
 
 
+@traceable(run_type="chain", name="no_answer")
 def no_answer_node(state: QAState) -> dict:
     trace = state["trace"] + ["no_answer: could not produce a grounded, cited answer from the corpus"]
     return {"answer": NO_ANSWER_MESSAGE, "citations": [], "trace": trace}
@@ -208,6 +215,7 @@ def get_graph():
     return _compiled_graph
 
 
+@traceable(run_type="chain", name="run_qa")
 def run_qa(question: str) -> QAState:
     """Entry point used by the API layer: run the full graph for one question."""
     graph = get_graph()

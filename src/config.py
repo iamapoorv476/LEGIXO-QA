@@ -43,6 +43,13 @@ def _int(name: str, default: int) -> int:
         raise ConfigError(f"{name} must be an integer, got {raw!r}") from exc
 
 
+def _bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 def _float(name: str, default: float) -> float:
     raw = os.getenv(name)
     if raw is None or raw.strip() == "":
@@ -55,23 +62,27 @@ def _float(name: str, default: float) -> float:
 
 @dataclass(frozen=True)
 class Settings:
-    
+    # Anthropic (LLM: grading + answer generation)
     anthropic_api_key: str
     anthropic_model: str
 
+    # OpenAI (embeddings only)
     openai_api_key: str
     openai_embedding_model: str
 
+    # Pinecone
     pinecone_api_key: str
     pinecone_cloud: str
     pinecone_region: str
     pinecone_index_name: str
     pinecone_namespace: str
 
+    # Ingest / chunking
     corpus_dir: Path
     chunk_size_tokens: int
     chunk_overlap_tokens: int
 
+    # Retrieval / graph behavior
     top_k: int
     max_loops: int
     min_similarity: float
@@ -79,6 +90,11 @@ class Settings:
     # API server
     api_host: str
     api_port: int
+
+    # LangSmith tracing (optional extra, off by default)
+    langsmith_tracing: bool
+    langsmith_api_key: str
+    langsmith_project: str
 
     def as_safe_dict(self) -> dict:
         """Config snapshot for logs/health checks with secrets redacted."""
@@ -104,6 +120,9 @@ class Settings:
             "min_similarity": self.min_similarity,
             "api_host": self.api_host,
             "api_port": self.api_port,
+            "langsmith_tracing": self.langsmith_tracing,
+            "langsmith_project": self.langsmith_project,
+            "langsmith_api_key": redact(self.langsmith_api_key) if self.langsmith_tracing else "(tracing disabled)",
         }
 
 
@@ -146,6 +165,9 @@ def load_settings() -> Settings:
         min_similarity=_float("MIN_SIMILARITY", 0.15),
         api_host=os.getenv("API_HOST", "0.0.0.0"),
         api_port=_int("API_PORT", 8000),
+        langsmith_tracing=_bool("LANGSMITH_TRACING", False),
+        langsmith_api_key=os.getenv("LANGSMITH_API_KEY", ""),
+        langsmith_project=os.getenv("LANGSMITH_PROJECT", "legixo-qa"),
     )
 
 
@@ -153,3 +175,24 @@ def load_settings() -> Settings:
 # If env vars are missing, this fails fast and loudly at process start
 # rather than deep inside a request handler.
 settings = load_settings()
+
+# Propagate LangSmith config to the env vars its SDK and LangGraph's
+# LangChain-based runtime actually read. Done here, at config import time
+# (before src.graph or src.llm import langgraph/langsmith), so tracing is
+# active for every node and traced LLM call from the very first request --
+# not just ones issued after some later setup step.
+if settings.langsmith_tracing:
+    os.environ["LANGSMITH_TRACING"] = "true"
+    os.environ["LANGSMITH_API_KEY"] = settings.langsmith_api_key
+    os.environ["LANGSMITH_PROJECT"] = settings.langsmith_project
+    # Older LangChain versions read the LANGCHAIN_* names; set both so
+    # tracing works regardless of which version resolved in the venv.
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = settings.langsmith_api_key
+    os.environ["LANGCHAIN_PROJECT"] = settings.langsmith_project
+else:
+    # Explicitly off, even if the user's shell happens to have these set
+    # globally from some other project -- .env is the single source of
+    # truth for this repo's behavior.
+    os.environ["LANGSMITH_TRACING"] = "false"
+    os.environ["LANGCHAIN_TRACING_V2"] = "false"
