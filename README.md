@@ -5,11 +5,41 @@ questions about a document corpus and get back an answer with citations
 verified against real retrieved chunks — out-of-corpus questions are
 explicitly refused, never hallucinated.
 
+**📹 Demo video (5–10 min):** https://youtu.be/YmZrpRZW41g
+Walks through install, ingest, starting the API, calling `/ask` (good
+answers with citations + one out-of-corpus refusal), and the LangGraph
+layout.
+
+---
+
+## Quickstart
+
+```bash
+git clone <repo-url> legixo-qa && cd legixo-qa
+python -m venv .venv && source .venv/Scripts/activate   # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env            # then add your 3 API keys (Anthropic, OpenAI, Pinecone)
+python -m scripts.ingest_cli    # load the corpus into Pinecone
+python -m scripts.run_server    # starts http://localhost:8000
+```
+
+Then, in another terminal:
+
+```bash
+curl -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What notice period does Priya Nambiar have?"}'
+```
+
+That's the whole happy path. The sections below cover each step in detail,
+the Pinecone/idempotency specifics, the LangGraph flow, and honest notes
+on what works, what's imperfect, and what I'd do next.
+
 ---
 
 ## Table of contents
 
-1. [Folder name / structure](#1-folder-name--where-to-put-this)
+1. [Folder structure](#1-folder-structure)
 2. [Prerequisites](#2-prerequisites)
 3. [Install](#3-install)
 4. [Configure environment variables](#4-configure-environment-variables)
@@ -26,56 +56,34 @@ explicitly refused, never hallucinated.
 
 ---
 
-## 1. Folder name / where to put this
+## 1. Folder structure
 
-Name the project folder **`legixo-qa`** (matches the package imports used
-throughout the code, e.g. `from src.config import settings`). If you clone
-or unzip this under a different name, nothing breaks — Python imports here
-are relative to wherever you run commands from, not the folder name itself
-— but keep the **internal structure exactly as below**, since paths and
-imports depend on it.
+Run all commands from the repo root. Keep the internal structure intact —
+imports are relative to it (e.g. `from src.config import settings`).
 
 ```
-legixo-qa/                     <- run all commands from here
-├── README.md                  <- this file
-├── .env.example                <- copy to .env, fill in real keys
-├── requirements.txt             <- runtime dependencies
-├── requirements-dev.txt         <- + pytest, for running the test suite
-├── pytest.ini
-├── corpus/                     <- your source documents (.md / .txt)
-│   ├── 01_matter_memo_arvind_v_northfield.md
-│   ├── 02_employment_agreement_excerpt.md
-│   ├── 03_hearing_notice_template.md
-│   ├── 04_statute_style_excerpt_fictional.md
-│   ├── 05_counsel_notes_settlement.md
-│   └── 06_property_lease_clause.md
+legixo-qa/
+├── corpus/            # source documents (.md / .txt)
 ├── docs/
-│   └── langgraph.md             <- node map, diagram, branch/loop-limit rationale
+│   └── langgraph.md   # node map, diagram, branch/loop-limit rationale
 ├── src/
-│   ├── __init__.py
-│   ├── config.py               <- all env vars, loaded once, validated
-│   ├── chunking.py              <- token-aware text splitter
-│   ├── embeddings.py            <- OpenAI embeddings wrapper
-│   ├── pinecone_client.py       <- Pinecone index create/upsert/query
-│   ├── ingest.py                <- ingest orchestrator
-│   ├── llm.py                   <- Anthropic wrapper (tool-calling for structured output)
-│   ├── graph.py                 <- LangGraph flow: retrieve/grade/branch/generate/validate
-│   └── api.py                   <- FastAPI app: POST /ask, GET /health
+│   ├── config.py      # all env vars, loaded once, validated
+│   ├── chunking.py    # token-aware text splitter
+│   ├── embeddings.py  # OpenAI embeddings wrapper
+│   ├── pinecone_client.py
+│   ├── ingest.py      # ingest orchestrator (deterministic IDs)
+│   ├── llm.py         # Anthropic wrapper (tool-calling for structured output)
+│   ├── graph.py       # LangGraph flow: retrieve/grade/branch/generate/validate
+│   └── api.py         # FastAPI app: POST /ask, GET /health
 ├── scripts/
-│   ├── __init__.py
-│   ├── ingest_cli.py            <- `python -m scripts.ingest_cli`
-│   └── run_server.py            <- `python -m scripts.run_server`
+│   ├── ingest_cli.py  # python -m scripts.ingest_cli
+│   └── run_server.py  # python -m scripts.run_server
 ├── eval/
-│   ├── __init__.py
-│   ├── self_test.json           <- 15 questions with expected citations + notes
-│   └── run_self_test.py         <- hits the live API and checks results automatically
-└── tests/
-    ├── __init__.py
-    ├── conftest.py
-    ├── test_chunking.py
-    ├── test_ingest.py
-    ├── test_graph.py
-    └── test_api.py
+│   ├── self_test.json     # 15 questions, expected citations, pass/fail notes
+│   └── run_self_test.py   # hits the live API and checks results
+├── tests/             # 37 tests (chunking, ingest, graph, api)
+├── requirements.txt / requirements-dev.txt
+└── .env.example
 ```
 
 ---
@@ -85,34 +93,22 @@ legixo-qa/                     <- run all commands from here
 - Python 3.10+
 - A Pinecone account + API key ([pinecone.io](https://www.pinecone.io))
 - An OpenAI API key (used for embeddings only)
-- An Anthropic API key (not used yet in Day 1 — needed later for the
-  grading/answer LLM calls in Day 2, but required in `.env` now since
-  `config.py` validates all keys up front)
+- An Anthropic API key (grading + answer generation)
 
 ## 3. Install
 
 ```bash
 cd legixo-qa
 python -m venv .venv
-source .venv/Scripts/activate    # Windows Git Bash: .venv/Scripts/activate
-                                   # macOS/Linux: source .venv/bin/activate
+source .venv/Scripts/activate    # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-dev.txt   # only needed to run the test suite
 ```
 
-For running the test suite, also install dev dependencies:
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-> **Windows/Git Bash tip:** always confirm the venv is actually active
-> before installing — run `python -c "import sys; print(sys.executable)"`
-> and check the path points inside `.venv`. If `pip install` runs before
-> activation (or `pip` resolves to a different Python than `python` does),
-> packages silently land in the wrong place and imports fail later with no
-> obvious cause. When in doubt, use `python -m pip install ...` instead of
-> bare `pip install ...` — it guarantees pip runs as a module of that exact
-> Python interpreter.
+> **Windows/Git Bash tip:** if imports fail after install, your venv
+> probably wasn't active when `pip` ran. Use `python -m pip install ...`
+> to guarantee pip installs into the same interpreter `python` uses. See
+> §12.
 
 ## 4. Configure environment variables
 
@@ -124,27 +120,26 @@ Then edit `.env`:
 
 | Variable | Required | Notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | yes | Used in Day 2 (grading + answer generation). Must be set now — config validation checks it. |
+| `ANTHROPIC_API_KEY` | yes | Grading + answer generation. Config validation checks it at startup. |
 | `ANTHROPIC_MODEL` | no | Default `claude-sonnet-4-5`. |
 | `OPENAI_API_KEY` | yes | Used for embeddings. |
-| `OPENAI_EMBEDDING_MODEL` | no | Default `text-embedding-3-small` (1536-dim). If you change this, also add its dimension to `EMBEDDING_DIMENSIONS` in `src/pinecone_client.py`. |
+| `OPENAI_EMBEDDING_MODEL` | no | Default `text-embedding-3-small` (1536-dim). If you change this, also update `EMBEDDING_DIMENSIONS` in `src/pinecone_client.py`. |
 | `PINECONE_API_KEY` | yes | From your Pinecone dashboard. |
 | `PINECONE_CLOUD` / `PINECONE_REGION` | no | Default `aws` / `us-east-1`. Used only if the index doesn't exist yet — see §5. |
 | `PINECONE_INDEX_NAME` | no | Default `legixo-qa-docs`. |
 | `PINECONE_NAMESPACE` | no | Default `default`. Lets you keep multiple corpora in one index. |
 | `CORPUS_DIR` | no | Default `corpus`. Relative paths resolve from the repo root. |
 | `CHUNK_SIZE_TOKENS` / `CHUNK_OVERLAP_TOKENS` | no | Default `500` / `50`. Overlap must be smaller than size. |
-| `TOP_K` | no | Default `5`. Used in Day 2 retrieval. |
-| `MAX_LOOPS` | no | Default `2`. Used in Day 2's loop guard. |
-| `MIN_SIMILARITY` | no | Default `0.15`. Used in Day 2 grading. |
+| `TOP_K` | no | Default `5`. |
+| `MAX_LOOPS` | no | Default `2`. |
+| `MIN_SIMILARITY` | no | Default `0.15`. |
 
 **Never commit `.env`.** Only `.env.example` (dummy values) belongs in git.
 
 ## 5. Pinecone index — how it's created
 
-You don't need to manually create the index in the Pinecone console. The
-first time you run ingest, `ensure_index_exists()` in
-`src/pinecone_client.py`:
+You don't need to manually create the index. The first time you run
+ingest, `ensure_index_exists()` in `src/pinecone_client.py`:
 
 1. Lists your existing indexes.
 2. If `PINECONE_INDEX_NAME` isn't among them, creates a **serverless**
@@ -154,10 +149,10 @@ first time you run ingest, `ensure_index_exists()` in
 3. Polls until Pinecone reports the index ready (serverless creation is
    async), or raises after 60s if it never becomes ready.
 
-If you'd rather create it yourself first: Pinecone console → Create Index
-→ name matching `PINECONE_INDEX_NAME`, dimension `1536`, metric `cosine`,
-serverless, same cloud/region as your `.env`. Ingest will detect it exists
-and skip creation.
+To create it yourself instead: Pinecone console → Create Index → name
+matching `PINECONE_INDEX_NAME`, dimension `1536`, metric `cosine`,
+serverless, same cloud/region as your `.env`. Ingest detects it and skips
+creation.
 
 ## 6. Run ingest
 
@@ -165,7 +160,7 @@ and skip creation.
 python -m scripts.ingest_cli --verbose
 ```
 
-Expected output (counts will match your corpus):
+Expected output:
 
 ```
 Ingest complete.
@@ -178,47 +173,31 @@ Ingest complete.
 
 **Chosen strategy: deterministic point IDs.** Each chunk's Pinecone vector
 ID is `chunk_<sha256(source_file_path : chunk_index)[:24]>`. Running
-ingest again on an unchanged corpus produces the exact same IDs, so
-Pinecone's `upsert` **overwrites** those vectors in place — no duplicates,
-no growing vector count.
+ingest again on an unchanged corpus produces the same IDs, so Pinecone's
+`upsert` **overwrites** in place — no duplicates, no growing vector count.
 
 Why this over "delete-namespace-first": deterministic IDs let you
 re-ingest a single changed file without wiping and re-embedding the whole
 corpus, and there's no window where the index is partially empty mid-run.
-The tradeoff: if a file's *content* changes enough to shift chunk
-boundaries, old chunks at higher indices than the new chunk count can be
-left behind under stale IDs. (Not handled in Day 1 — noted here for
-transparency; a `MAX(chunk_index)` cleanup pass would be one fix.)
+Tradeoff: if a file's content changes enough to shift chunk boundaries,
+old chunks at higher indices than the new chunk count can be left behind
+under stale IDs (see §14).
 
-**To verify it yourself:**
+**To verify:**
 
 ```bash
 python -m scripts.ingest_cli   # run 1
 python -m scripts.ingest_cli   # run 2, same corpus
-```
-
-Then check vector count is unchanged either via the Pinecone console, or:
-
-```bash
-python3 -c "
-from src.pinecone_client import PineconeClient
-print(PineconeClient().stats())
-"
+python -c "from src.pinecone_client import PineconeClient; print(PineconeClient().stats())"
 ```
 
 `total_vector_count` should be identical after both runs.
 
 **Verified live (not simulated):** ran ingest twice against a real
-Pinecone serverless index (`legixo-qa-docs`, `aws`/`us-east-1`) with the
-6-file sample corpus. Both runs reported `Vectors upserted: 6`, and
-`describe_index_stats()` after both runs confirmed:
-
-```
-DescribeIndexStatsResponse(dimension=1536, total_vector_count=6, metric='cosine', namespaces=1)
-```
-
-`total_vector_count` stayed at `6` after the second run — proof the
-deterministic-ID strategy overwrites in place rather than duplicating.
+Pinecone serverless index with the 6-file sample corpus. Both runs
+reported `Vectors upserted: 6`, and `describe_index_stats()` confirmed
+`total_vector_count=6` after both — proof the deterministic-ID strategy
+overwrites in place rather than duplicating.
 
 ## 8. Start the API server
 
@@ -263,13 +242,7 @@ Example response:
 **Trace is included by default** — a deliberate choice so the graph's
 reasoning is visible from a plain curl call, not hidden behind a flag a
 reviewer would need to discover first. Set `?include_trace=false` for a
-lighter response:
-
-```bash
-curl -X POST "http://localhost:8000/ask?include_trace=false" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "..."}'
-```
+lighter response.
 
 ### Out-of-corpus example
 
@@ -331,25 +304,23 @@ out-of-corpus and "plausible-sounding trap" cases) against the live API,
 checks whether the expected source files appear in citations, and writes
 `eval/self_test_results.json`. My own pass/fail notes and honest
 self-critique are inline in `eval/self_test.json` — see especially case 14
-(the trap question) and case 15 (below) for the most interesting results.
+(the trap question) and case 15 (below).
 
-**Automated citation-checking has a known blind spot, and I hit it
-for real:** case 15 asks about a trial outcome the corpus doesn't contain.
-One run produced a correct, honest, *cited* answer — citing real chunks
-not to fabricate a verdict, but to explain the real context it does have
-(case still at evidence stage) while explicitly saying the outcome itself
-isn't in the documents. My eval script originally treated any non-empty
-citation on an out-of-corpus question as an automatic FAIL, which
-flagged this as a failure even though the system never hallucinated.
-Re-running the identical question moments later via the graph directly
-produced a *different* result — a hard refusal with zero citations after
-2 loops. Same code, same corpus, two different (but both
-non-hallucinating) behaviors on this one borderline question. Fixed the
-eval script to flag known-ambiguous cases like this for manual review
-instead of a blind auto-fail (see `KNOWN_AMBIGUOUS_OUT_OF_CORPUS_IDS` in
-`eval/run_self_test.py`), and documented the underlying non-determinism
-in `eval/self_test.json`'s notes for case 15 rather than smoothing it over.
-The one thing that held across both runs: it never invented a trial
+**Automated citation-checking has a known blind spot, and I hit it for
+real:** case 15 asks about a trial outcome the corpus doesn't contain. One
+run produced a correct, honest, *cited* answer — citing real chunks not to
+fabricate a verdict, but to explain the real context it does have (case
+still at evidence stage) while explicitly saying the outcome itself isn't
+in the documents. My eval script originally treated any non-empty citation
+on an out-of-corpus question as an automatic FAIL, which flagged this even
+though the system never hallucinated. Re-running the identical question
+moments later produced a *different* result — a hard refusal with zero
+citations. Same code, same corpus, two different (both non-hallucinating)
+behaviors on this one borderline question. Fixed the eval script to flag
+known-ambiguous cases for manual review instead of a blind auto-fail (see
+`KNOWN_AMBIGUOUS_OUT_OF_CORPUS_IDS` in `eval/run_self_test.py`), and
+documented the non-determinism in case 15's notes rather than smoothing it
+over. The invariant that held across both runs: it never invented a trial
 outcome that wasn't in the documents.
 
 ## 11. Run the tests
@@ -359,37 +330,38 @@ pip install -r requirements-dev.txt   # if not already installed
 pytest -v
 ```
 
-14 tests cover chunking (windowing, overlap, edge cases) and ingest
-(deterministic IDs, idempotent re-run, empty-file/corpus handling), all
-mocked against Pinecone/OpenAI so they run offline. One test
+37 tests cover chunking (windowing, overlap, edge cases), ingest
+(deterministic IDs, idempotent re-run, empty-file/corpus handling), the
+LangGraph flow (both branches, loop limit, citation validation), and the
+API (happy path, trace toggle, every error status code) — all mocked
+against Pinecone/OpenAI/Anthropic so they run offline. One test
 (`test_real_tiktoken_encoding_used_by_default_when_available`) is skipped
-automatically if your environment can't reach tiktoken's vocab CDN on
-first use — it isn't a code issue, just a network check.
+automatically if your environment can't reach tiktoken's vocab CDN — a
+network check, not a code issue.
 
 ## 12. Troubleshooting
 
 | Symptom | Likely cause |
 |---|---|
+| `ModuleNotFoundError` after install | venv wasn't active when `pip` ran, or `pip`/`python` point to different interpreters. Activate the venv and reinstall with `python -m pip install -r requirements.txt`. |
 | `ConfigError: Missing required environment variable` | `.env` not created, or missing a required key. Copy `.env.example` → `.env`. |
 | `PineconeIndexError: ... did not become ready within 60.0s` | Rare; re-run the ingest command — index creation usually finishes within a few seconds. |
 | `IngestError: No files with extensions {'.md', '.txt'} found` | `CORPUS_DIR` points somewhere without `.md`/`.txt` files. |
 | `EmbeddingError: OpenAI embeddings call failed` | Check `OPENAI_API_KEY` is valid and has quota. |
-| Vector count grows on repeat ingest | Shouldn't happen — if it does, confirm you didn't change `CORPUS_DIR`/file paths between runs (IDs are derived from relative file path). |
+| Vector count grows on repeat ingest | Shouldn't happen — confirm you didn't change `CORPUS_DIR`/file paths between runs (IDs derive from relative file path). |
 
 ## 13. Extra: LangSmith tracing (optional)
 
-Off by default — the assignment's required `trace` field in `/ask`
-responses already satisfies the "optional trace" requirement on its own.
-This is the one extra chosen from their list ("LangSmith, hybrid search,
-reranker") since it directly extends something already built, rather than
-adding an unrelated capability.
+Off by default — the required `trace` field in `/ask` responses already
+satisfies the "optional trace" requirement. This is the one extra chosen
+from the assignment's list (LangSmith, hybrid search, reranker), picked
+because it directly extends something already built.
 
 **What it adds over the in-response `trace`:** a full dashboard view per
 question — every node's exact input/output, every LLM call's prompt and
-response with token usage, and wall-clock latency per step. Genuinely
-useful for debugging *why* a grading judgment went a certain way in a way
-a printed trace string can't show (e.g., seeing the exact chunk text
-Claude was grading against).
+response with token usage, and per-step latency. Useful for debugging
+*why* a grading judgment went a certain way (e.g., seeing the exact chunk
+text Claude was grading against).
 
 **To enable:**
 
@@ -400,64 +372,38 @@ Claude was grading against).
    LANGSMITH_API_KEY=<your real key>
    LANGSMITH_PROJECT=legixo-qa
    ```
-3. Restart the server (`python -m scripts.run_server`) — tracing config is
-   read once at process start via `src/config.py`, which propagates it to
-   the env vars LangGraph's LangChain-based runtime and the `langsmith`
-   SDK actually read (`LANGSMITH_TRACING`/`LANGCHAIN_TRACING_V2` etc. —
-   both old and new naming set, for compatibility across LangChain
-   versions).
-4. Call `/ask` as normal. Traces appear at
+3. Restart the server. Tracing config is read once at startup via
+   `src/config.py`, which sets both current (`LANGSMITH_*`) and legacy
+   (`LANGCHAIN_*`) env var names for cross-version compatibility.
+4. Call `/ask`. Traces appear at
    [smith.langchain.com](https://smith.langchain.com) under the
-   `legixo-qa` project — each call shows the full node sequence
-   (`retrieve` → `grade_chunks` → ...), with `grade_relevance`,
-   `generate_answer`, and `rewrite_query` traced individually as LLM spans
-   (via `@traceable` in `src/llm.py`), nested under their parent node.
+   `legixo-qa` project — each shows the full node sequence, with
+   `grade_relevance`/`generate_answer`/`rewrite_query` as nested LLM spans.
 
-**Verify it's off when you don't want it:** `GET /health` reports
-`"langsmith_tracing": false` and redacts the API key entirely (returns
-`"(tracing disabled)"` rather than a partial key) whenever tracing is
-off — confirmed by
+Verified live end-to-end. `GET /health` reports `"langsmith_tracing"` and
+redacts the key entirely (`"(tracing disabled)"`) when off — confirmed by
 `tests/test_api.py::test_health_endpoint_reports_langsmith_tracing_state`.
 
 ---
 
 ## 14. What I'd do with more time
 
-Being explicit about what's scoped out rather than silent about it:
+Scoped out explicitly rather than left silent:
 
-- **Stale-chunk cleanup on re-ingest.** If a source file's content shrinks
-  (fewer chunks than before), old chunk IDs at higher indices are left
-  behind in Pinecone under stale content. Fix: track the max chunk_index
-  per file from the previous run (in a small metadata store) and delete
-  any now-orphaned higher-index IDs after upsert.
-- **Only similarity-threshold + LLM grading, no reranker.** A cross-encoder
-  reranker between retrieve and grade would likely reduce the number of
-  rewrite loops needed on ambiguous questions. Scoped out as a "one
-  tasteful extra" candidate rather than mixed into the core flow.
-- **No hybrid (keyword + vector) search.** For this legal-style corpus,
-  exact term matching (case numbers, statute section numbers) might
-  outperform pure embedding similarity on some questions — worth testing
-  if the corpus grows.
-- **LangSmith tracing is wired up (§13)**, but only exercised against the
-  15-question self-test set. Would want to run it against a much larger,
-  more adversarial question set to actually use it for what it's good at
-  — spotting patterns in *why* grading judgments go wrong across many
-  examples, not just confirming the 15 already-known-good cases.
-- **Chunking barely exercised.** The sample corpus's files are short
-  enough that each became exactly one chunk — confirmed across all 15
-  self-test questions in `eval/self_test.json` (every `loop_count` and
-  citation traces to a single whole-document chunk, never a partial
-  passage). The overlap/windowing logic is unit-tested in isolation
-  (`tests/test_chunking.py`) but never proven end-to-end against a real
-  multi-chunk document. Would want a longer real document in the corpus
-  to validate this properly.
-- **One terminology-precision gap found in self-testing** (case 12,
-  `eval/self_test.json`): the source text says settlement talks are
-  "without prejudice" (a specific legal term about admissibility in
-  court), and the system's answer said they're "confidential" — factually
-  adjacent but not the same claim. Citation and underlying facts were
-  correct; the paraphrase lost precision. Fix: tighten the
-  answer-generation system prompt to preserve specific legal/technical
-  terms verbatim rather than substituting more common language.
+- **Stale-chunk cleanup on re-ingest.** If a file shrinks (fewer chunks),
+  old higher-index chunk IDs are left behind. Fix: track max chunk_index
+  per file and delete orphaned IDs after upsert.
+- **A reranker** between retrieve and grade would likely cut the number of
+  rewrite loops on ambiguous questions.
+- **Hybrid (keyword + vector) search** — exact term matching (case/statute
+  numbers) might beat pure embedding similarity on this legal corpus.
+- **Chunking is barely exercised** — each sample file is short enough to
+  become exactly one chunk, so citations are effectively whole-document.
+  The windowing/overlap logic is unit-tested in isolation but not proven
+  end-to-end against a real multi-chunk document.
+- **Grading non-determinism** (§10, case 15) — the grade step can judge
+  relevant-but-incomplete chunks either way. Both outcomes are safe, but
+  a larger adversarial question set (and the LangSmith traces to study it)
+  would help tune the threshold.
 
 ---
