@@ -4,7 +4,7 @@
     "question": "What notice period does Priya Nambiar have in her employment agreement?",
     "expected_citation_files": ["02_employment_agreement_excerpt.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": "Priya Nambiar has a notice period of 60 days written notice in her employment agreement with Bluecrest Analytics LLP. Either party may end the agreement by giving this notice.",
+    "actual_answer": "According to Priya Nambiar's employment agreement with Bluecrest Analytics LLP, either party may end the agreement by giving 60 days written notice.",
     "actual_citation_files": ["02_employment_agreement_excerpt.md"],
     "loop_count": 1,
     "pass": true,
@@ -15,121 +15,121 @@
     "question": "How long is the non-compete period after Priya Nambiar leaves Bluecrest?",
     "expected_citation_files": ["02_employment_agreement_excerpt.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING - run via eval/run_self_test.py"
+    "actual_answer": "The non-compete period after Priya Nambiar leaves Bluecrest is 12 months. During this period, the employee may not work for a direct competitor in the same city where Bluecrest has an office, if the new role uses the same client list supplied by Bluecrest.",
+    "actual_citation_files": ["02_employment_agreement_excerpt.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correctly included the non-compete's actual scope condition (same city + same client list) instead of overstating it as a blanket ban."
   },
   {
     "id": 3,
     "question": "What is the monthly rent and security deposit for Unit 4B at Harbor View Tower?",
     "expected_citation_files": ["06_property_lease_clause.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "The monthly rent for Unit 4B at Harbor View Tower is ₹45,000. The security deposit is ₹1,35,000 (equivalent to three months' rent).",
+    "actual_citation_files": ["06_property_lease_clause.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Both figures correct, correctly explained the deposit as 3x rent."
   },
   {
     "id": 4,
     "question": "Is subletting allowed under the Harbor Bean Roasters lease?",
     "expected_citation_files": ["06_property_lease_clause.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "No, subletting is not allowed under the Harbor Bean Roasters lease without written consent of the lessor.",
+    "actual_citation_files": ["06_property_lease_clause.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correctly preserved the conditional ('without written consent') instead of flattening to a blanket 'no'."
   },
   {
     "id": 5,
     "question": "When is the next hearing in Arvind Mehta v. Northfield Logistics, and who is being examined?",
     "expected_citation_files": ["01_matter_memo_arvind_v_northfield.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "The next hearing in Arvind Mehta v. Northfield Logistics is on 15 August 2025. The witness for the plaintiff (billing head) is to be examined.",
+    "actual_citation_files": ["01_matter_memo_arvind_v_northfield.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correctly answered the compound question (date + who) from a single chunk."
   },
   {
     "id": 6,
     "question": "What is the limitation period for contract claims under the Riverside Code?",
     "expected_citation_files": ["01_matter_memo_arvind_v_northfield.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "According to the Riverside Code, the limitation period for contract claims is three years from the breach date.",
+    "actual_citation_files": ["01_matter_memo_arvind_v_northfield.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correct."
   },
   {
     "id": 7,
     "question": "What interest rate applies to delayed payments when a contract fixes no rate?",
     "expected_citation_files": ["04_statute_style_excerpt_fictional.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "When a contract fixes no rate, simple interest at 9% per year may be awarded on admitted dues from the date of demand until payment.",
+    "actual_citation_files": ["04_statute_style_excerpt_fictional.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correct, and this is the same 9% figure the system correctly refused to misapply in case 14 -- good evidence the two behaviors are consistent, not accidental."
   },
   {
     "id": 8,
     "question": "Above what value must a commercial suit go to mandatory mediation, and for how long?",
     "expected_citation_files": ["04_statute_style_excerpt_fictional.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "According to the Riverside Commercial Courts Act, a commercial suit above five lakh fictional rupees must go to mandatory mediation for 30 days unless both parties waive in writing.",
+    "actual_citation_files": ["04_statute_style_excerpt_fictional.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correctly included the waiver condition, not just the headline figures."
   },
   {
     "id": 9,
     "question": "What percentage of open invoices did Northfield offer to settle for, and what did the client instruct as a counter?",
     "expected_citation_files": ["05_counsel_notes_settlement.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "Northfield offered to settle for 70% of open invoices if Arvind drops the damage counterclaim. The client instructed to counter at 85%.",
+    "actual_citation_files": ["05_counsel_notes_settlement.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correct on both figures and the condition attached to Northfield's offer."
   },
   {
     "id": 10,
     "question": "How many clear days before a hearing must written arguments be filed?",
     "expected_citation_files": ["03_hearing_notice_template.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "Written arguments must be filed seven clear days before the hearing.",
+    "actual_citation_files": ["03_hearing_notice_template.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correct."
   },
   {
     "id": 11,
     "question": "What date was the Lakeview Society v. City Water Board hearing adjourned to?",
     "expected_citation_files": ["03_hearing_notice_template.md"],
     "category": "in-corpus, single-file",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING"
+    "actual_answer": "The Lakeview Society v. City Water Board hearing was adjourned to 22 September 2025.",
+    "actual_citation_files": ["03_hearing_notice_template.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "Verified live. Correct -- also confirms the system distinguishes between the two unrelated cases mentioned in the same source file (Arvind Mehta case vs. Lakeview Society case) without cross-contaminating facts."
   },
   {
     "id": 12,
     "question": "Are the settlement talks between Arvind Mehta and Northfield confidential, and is there anything on the record yet?",
     "expected_citation_files": ["05_counsel_notes_settlement.md"],
     "category": "in-corpus, single-file, nuanced wording",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING - tests whether the system correctly surfaces the 'without prejudice unless a signed term sheet exists' nuance rather than a flat yes/no."
+    "actual_answer": "Yes, the settlement talks between Arvind Mehta and Northfield are confidential. According to the counsel notes, settlement talks are without prejudice unless a signed term sheet exists. As for anything on the record, there is no signed term sheet yet.",
+    "actual_citation_files": ["05_counsel_notes_settlement.md"],
+    "loop_count": 1,
+    "pass": true,
+    "notes": "PASS on citation, but imprecise on terminology -- flagged as a genuine limitation, not smoothed over: the source says settlement talks are 'without prejudice' (a specific legal term meaning statements can't be used as admissions in court), and the system answered 'Yes... are confidential.' Those aren't quite the same thing -- 'without prejudice' governs admissibility, not secrecy. The underlying facts and citation are correct, but the system substituted a looser everyday word for a precise legal term. With more time I'd tighten the answer-generation prompt to instruct the model to preserve specific legal/technical terms from the source rather than paraphrasing them into more common language."
   },
   {
     "id": 13,
@@ -151,17 +151,17 @@
     "actual_citation_files": [],
     "loop_count": 2,
     "pass": true,
-    "notes": "Verified live. This is the hardest case in the set: both 'Priya Nambiar' and a '9% interest rate' genuinely exist in the corpus, but in unrelated documents. The grader's own reasoning explicitly distinguished them ('refers to commercial suits and contract defaults generally, not employment salary payments') rather than stitching the two facts together into a fabricated answer."
+    "notes": "Verified live. The hardest case in the set: both 'Priya Nambiar' and a '9% interest rate' genuinely exist in the corpus (see case 2, case 7), but in unrelated documents. The grader's own reasoning explicitly distinguished them ('refers to commercial suits and contract defaults generally, not employment salary payments') rather than stitching the two real facts together into a fabricated answer."
   },
   {
     "id": 15,
     "question": "What was the outcome of the Arvind Mehta trial?",
     "expected_citation_files": [],
     "category": "out-of-corpus, presupposes a fact not in the corpus",
-    "actual_answer": null,
-    "actual_citation_files": null,
-    "loop_count": null,
-    "pass": null,
-    "notes": "PENDING - the corpus only shows the matter at the evidence stage, pre-trial; a good answer should say the outcome isn't in the documents rather than assuming a trial concluded."
+    "actual_answer": "I can't find information about this in the provided documents.",
+    "actual_citation_files": [],
+    "loop_count": 2,
+    "pass": true,
+    "notes": "Verified live. The corpus only shows the matter at the evidence stage, pre-trial (see case 5 -- next hearing still pending). The system correctly declined rather than assuming or inventing a trial outcome that was never in the documents."
   }
 ]
